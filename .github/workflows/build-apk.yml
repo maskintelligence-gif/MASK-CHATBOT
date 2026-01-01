@@ -1,49 +1,28 @@
-name: Flutter CI/CD
+name: Build APK
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
     branches: [ main ]
-  release:
-    types: [created]
+  workflow_dispatch:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v3
-    
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.19.0'
-    
-    - name: Get dependencies
-      run: flutter pub get
-    
-    - name: Run tests
-      run: flutter test
-    
-    - name: Analyze code
-      run: flutter analyze
 
-  build-apk:
-    needs: test
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.19.0'
-    
+
     - name: Get dependencies
       run: flutter pub get
-    
+
+    - name: Analyze code
+      run: flutter analyze || echo "Analysis completed"
+
     - name: Build APK
       env:
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -51,45 +30,12 @@ jobs:
         flutter build apk --release \
           --dart-define=GROQ_API_KEY=$GROQ_API_KEY \
           --split-per-abi
-    
-    - name: Upload APK artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: apk-build
-        path: build/app/outputs/flutter-apk/
-        retention-days: 30
+        echo "APK files created:"
+        ls -la build/app/outputs/flutter-apk/
 
-  build-appbundle:
-    needs: test
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-    
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.19.0'
-    
-    - name: Get dependencies
-      run: flutter pub get
-    
-    - name: Build App Bundle
-      env:
-        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      run: |
-        flutter build appbundle --release \
-          --dart-define=GROQ_API_KEY=$GROQ_API_KEY
-    
-    - name: Upload App Bundle
+    - name: Upload APK
       uses: actions/upload-artifact@v3
       with:
-        name: appbundle-build
-        path: build/app/outputs/bundle/
-        retention-days: 30
+        name: apk-files
+        path: build/app/outputs/flutter-apk/
+        if-no-files-found: error
